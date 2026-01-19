@@ -1,8 +1,19 @@
-from fastapi import FastAPI 
+from fastapi import FastAPI
+from pydantic import BaseModel
 
 app = FastAPI()
 
-@app.get("/")
+# temporary in-memory storage for notes
+notes = {}
+class Note(BaseModel):
+    title: str
+    content: str
+    
+@app.post("/notes/")
+def create_note(note: Note):
+    notes.append(note)
+    return {"message": "Note created successfully", "note": note}
 
-def home():
-    return {"message": "Backend is running!"}
+@app.get("/notes/")
+def get_notes():
+    return {"notes": notes}
