@@ -1,7 +1,5 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import Optional
-
-# ---------- NOTES ----------
 
 class NoteBase(BaseModel):
     title: str
@@ -16,6 +14,7 @@ class NoteUpdate(BaseModel):
 
 class NoteResponse(NoteBase):
     id: int
+    owner_id: int
 
     class Config:
         from_attributes = True

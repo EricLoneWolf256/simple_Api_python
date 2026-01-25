@@ -62,17 +62,41 @@ def protected(current_user: str = Depends(get_current_user)):
 # ---------- NOTES ----------
 
 @app.post("/notes", response_model=schemas.NoteResponse)
-def create_note(note: schemas.NoteCreate, db: Session = Depends(get_db)):
-    new_note = models.Note(**note.model_dump())
+def create_note(
+    note: schemas.NoteCreate,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
+    user = db.query(models.User).filter(
+        models.User.username == current_user
+    ).first()
+
+    new_note = models.Note(
+        title=note.title,
+        content=note.content,
+        owner_id=user.id
+    )
+
     db.add(new_note)
     db.commit()
     db.refresh(new_note)
     return new_note
 
 
+
 @app.get("/notes", response_model=list[schemas.NoteResponse])
-def get_notes(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
-    return db.query(models.Note).offset(skip).limit(limit).all()
+def get_my_notes(
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
+    user = db.query(models.User).filter(
+        models.User.username == current_user
+    ).first()
+
+    return db.query(models.Note).filter(
+        models.Note.owner_id == user.id
+    ).all()
+
 
 
 @app.get("/notes/{note_id}", response_model=schemas.NoteResponse)
@@ -84,10 +108,23 @@ def get_note(note_id: int, db: Session = Depends(get_db)):
 
 
 @app.put("/notes/{note_id}", response_model=schemas.NoteResponse)
-def update_note(note_id: int, note: schemas.NoteUpdate, db: Session = Depends(get_db)):
-    db_note = db.query(models.Note).filter(models.Note.id == note_id).first()
+def update_note(
+    note_id: int,
+    note: schemas.NoteUpdate,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
+    user = db.query(models.User).filter(
+        models.User.username == current_user
+    ).first()
+
+    db_note = db.query(models.Note).filter(
+        models.Note.id == note_id,
+        models.Note.owner_id == user.id
+    ).first()
+
     if not db_note:
-        raise HTTPException(status_code=404, detail="Note not found")
+        raise HTTPException(status_code=403, detail="Not authorized")
 
     for key, value in note.model_dump(exclude_unset=True).items():
         setattr(db_note, key, value)
@@ -96,13 +133,24 @@ def update_note(note_id: int, note: schemas.NoteUpdate, db: Session = Depends(ge
     db.refresh(db_note)
     return db_note
 
-
 @app.delete("/notes/{note_id}")
-def delete_note(note_id: int, db: Session = Depends(get_db)):
-    note = db.query(models.Note).filter(models.Note.id == note_id).first()
+def delete_note(
+    note_id: int,
+    db: Session = Depends(get_db),
+    current_user: str = Depends(get_current_user)
+):
+    user = db.query(models.User).filter(
+        models.User.username == current_user
+    ).first()
+
+    note = db.query(models.Note).filter(
+        models.Note.id == note_id,
+        models.Note.owner_id == user.id
+    ).first()
+
     if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
+        raise HTTPException(status_code=403, detail="Not authorized")
 
     db.delete(note)
     db.commit()
-    return {"message": "Note deleted successfully"}
+    return {"message": "Note deleted"}
