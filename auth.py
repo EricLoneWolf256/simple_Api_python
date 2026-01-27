@@ -20,6 +20,7 @@ pwd_context = CryptContext(
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 
+
 # ---------- PASSWORD ----------
 
 def hash_password(password: str) -> str:
